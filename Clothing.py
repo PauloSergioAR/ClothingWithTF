@@ -7,6 +7,8 @@ from tensorflow import keras
 import numpy as np
 import matplotlib.pyplot as plt
 
+import os
+
 print(tf.__version__)
 
 fashion_mnist = keras.datasets.fashion_mnist
@@ -18,16 +20,6 @@ test_images = test_images / 255.0
 class_names = ['T-shirt/top', 'Trouser', 'Pullover', 'Dress', 'Coat', 
                'Sandal', 'Shirt', 'Sneaker', 'Bag', 'Ankle boot']
 
-plt.figure(figsize=(10, 10))
-for i in range(25):
-    plt.subplot(5, 5, i+1)
-    plt.xticks([])
-    plt.yticks([])
-    plt.grid(False)
-    plt.imshow(train_images[i], cmap=plt.cm.binary)
-    plt.xlabel(class_names[train_labels[i]])
-plt.show()
-
 model = keras.Sequential([
     keras.layers.Flatten(input_shape=(28, 28)),
     keras.layers.Dense(128, activation=tf.nn.relu),
@@ -38,7 +30,14 @@ model.compile(optimizer='adam',
                 loss='sparse_categorical_crossentropy',
                 metrics=['accuracy'])
 
-model.fit(train_images, train_labels, epochs=5)
+checkpoint_path = "training_1/cp.ckpt"
+checkpoint_dir = os.path.dirname(os.path.realpath(__file__))
+
+print(checkpoint_dir)
+
+cp_callback = keras.callbacks.ModelCheckpoint(checkpoint_dir, save_weights_only=True, verbose=1)
+
+model.fit(train_images, train_labels, epochs=5, callbacks = [cp_callback])
 
 test_loss, test_acc = model.evaluate(test_images, test_labels)
 print('Test accuracy: ', test_acc)
@@ -86,3 +85,22 @@ for i in range(num_images):
   plt.subplot(num_rows, 2*num_cols, 2*i+2)
   plot_value_array(i, predictions, test_labels)
 plt.show()
+
+testmodel = keras.Sequential([
+    keras.layers.Flatten(input_shape=(28, 28)),
+    keras.layers.Dense(128, activation=tf.nn.relu),
+    keras.layers.Dense(10, activation=tf.nn.softmax)
+])
+
+testmodel.compile(optimizer='adam',
+                loss='sparse_categorical_crossentropy',
+                metrics=['accuracy'])
+
+loss, acc = model.evaluate(test_images, test_labels)
+print("Untrained model, accuracy: {:5.2f}%".format(100*acc))
+
+latest = tf.train.latest_checkpoint(checkpoint_dir)
+
+print(latest)
+
+testmodel.load_weights(latest)
